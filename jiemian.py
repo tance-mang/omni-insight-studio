@@ -4,9 +4,9 @@ from shujuku import liebiao, baocun, zhuangtai
 from hexin import daoru, fenxi, ai, tuomin, excel
 
 def xianshi():
-    st.set_page_config(page_title='小红书 AI 爆文研究室', page_icon='✦', layout='wide')
-    st.title('✦ 小红书 AI 爆文研究室')
-    st.caption('XHS Insight Studio · 从内容数据到原创灵感 · 本地优先')
+    st.set_page_config(page_title='全域 AI 选品与内容研究室', page_icon='✦', layout='wide')
+    st.title('✦ 全域 AI 选品与内容研究室')
+    st.caption('Omni Insight Studio · 从内容数据到原创灵感 · 本地优先')
     page = st.sidebar.radio('工作台',['首页','笔记导入与分析','评论研究','产品知识库','AI 创作','草稿管理','系统设置'])
     st.sidebar.caption('源码公开 · 未经作者书面授权不得转售')
     if page == '首页':
@@ -16,17 +16,20 @@ def xianshi():
         st.info('① 导入授权数据 → ② 分析互动与需求 → ③ 录入产品 → ④ 生成并人工审核 → ⑤ 导出发布')
         st.write('不自动采集、不自动发布。规则评论统计无需联网；AI 内容会发送到你配置的模型服务。')
     elif page == '笔记导入与分析':
+        platform=st.selectbox('导入数据所属平台',['小红书','闲鱼','拼多多','抖音','淘宝','视频号','快手','其他'])
         st.download_button('下载 CSV 模板','标题,正文,点赞,收藏,评论\n虚构示例,这是一条虚构笔记,120,80,15\n'.encode('utf-8-sig'),'模板.csv')
         f=st.file_uploader('导入 CSV / XLSX',type=['csv','xlsx'])
         if f and st.button('验证并追加导入'):
             try:
                 rows=daoru(f,f.name)
-                for r in rows: baocun('笔记',**r)
+                for r in rows: baocun('笔记',platform=platform,**r)
                 st.success(f'已追加 {len(rows)} 条；重复导入会追加，请勿重复点击。')
             except Exception as e: st.error(str(e))
         rows=liebiao('笔记')
         if rows:
             df=pd.DataFrame(rows); df['互动分']=df.zan+2*df.cang+3*df.ping
+            selected=st.multiselect('筛选平台',sorted(df.platform.unique()),default=sorted(df.platform.unique()))
+            df=df[df.platform.isin(selected)]
             word=st.text_input('标题关键词'); df=df[df.biaoti.str.contains(word,regex=False)]
             st.caption('互动分 = 点赞 + 收藏×2 + 评论×3，仅供样本排序；无曝光数据不计算收藏率。')
             st.dataframe(df.sort_values('互动分',ascending=False),width='stretch')
@@ -59,9 +62,10 @@ def xianshi():
         if not products: st.info('请先保存一个产品'); return
         product=st.selectbox('选择产品',products,format_func=lambda r:r['biaoti'])
         mode=st.selectbox('创作模式',['选题结构','商品种草','情绪共鸣','竞品对比','小程序推广'])
+        target=st.selectbox('目标平台',['小红书','闲鱼','拼多多','抖音','淘宝','视频号','快手','其他'])
         context=st.text_area('研究摘要与要求（不要粘贴他人完整原文）')
         consent=st.checkbox('同意将产品资料和脱敏摘要发送到所配置的模型服务')
-        prompt=f'你是原创内容编辑。模式：{mode}。产品真实资料：{product["biaoti"]} {product["neirong"]}。研究摘要：{tuomin(context)}。提供5个标题、3版正文、标签、封面文案、配图建议和适合人群。不抄袭，不编造体验、效果、资质或竞品事实，遵守禁用词；最后提醒人工核实。'
+        prompt=f'你是原创内容编辑。目标平台：{target}，按其内容形式调整输出（闲鱼侧重商品描述，拼多多侧重商品卖点，抖音侧重短视频脚本，小红书侧重笔记）。模式：{mode}。产品真实资料：{product["biaoti"]} {product["neirong"]}。研究摘要：{tuomin(context)}。提供5个标题、3版正文或脚本、标签、封面文案、配图建议和适合人群。不抄袭，不编造体验、效果、资质或竞品事实，遵守禁用词；最后提醒人工核实平台规则。'
         st.download_button('导出提示词（可手动使用）',prompt,'创作提示词.txt')
         if st.button('调用模型生成') and consent:
             try:
@@ -69,7 +73,7 @@ def xianshi():
                 with st.spinner('生成中…'): st.session_state.result=ai(config.get('base',''),config.get('model',''),config.get('key',''),prompt,config.get('mode')=='Ollama')
             except Exception as e: st.error(str(e))
         result=st.text_area('编辑草稿',value=st.session_state.get('result',''),height=300)
-        if st.button('保存草稿') and result.strip(): baocun('草稿',biaoti=product['biaoti'],neirong=result); st.success('已保存')
+        if st.button('保存草稿') and result.strip(): baocun('草稿',platform=target,biaoti=product['biaoti'],neirong=result); st.success('已保存')
     else:
         rows=liebiao('草稿')
         for r in rows:
