@@ -35,3 +35,9 @@
 ## 后续记录规范
 
 每次验证记录日期、源码提交、环境、完整命令、结果及未测范围。失败时保留可复现步骤；真实服务与模拟服务结果分别标注。CI 工作流见 [.github/workflows](../.github/workflows/)。
+
+## 2026-11-26（Asia/Shanghai）本地文档核对回归
+
+源码基线：39f719343b5bf7410cc1f63d27063e3de1932e17，工作区仅有说明整理。Windows / bundled Python 3.12，临时测试依赖通过 sys.path 加载后用 runpy 执行等价命令 `python -m pytest -q`。实际结果：19 项通过，退出码 0。初次运行缺少依赖失败，补充临时依赖后重跑通过。
+
+本轮依赖未逐项锁定 requirements.txt 的版本（feedparser 6.0.14、PyYAML 6.0.4；pytest 9.2.0、Streamlit 1.67.0、pandas 3.1.1、SQLAlchemy 2.1.9），因此不代表锁定环境的完整复现。未调用真实模型、付费 API 或发布接口；未做安装包、跨端及全新安装验收。
